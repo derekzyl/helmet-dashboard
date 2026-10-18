@@ -1,38 +1,58 @@
 'use client';
 
-import React from 'react';
-import { BarChart3, TrendingUp, ShieldCheck, AlertOctagon, Activity } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { fetchDevices, fetchEvents, Device, SafetyEvent } from '@/lib/api';
+import { TrendingUp, ShieldCheck, AlertOctagon, Activity, RefreshCw } from 'lucide-react';
 
 export default function AnalyticsPage() {
-  const metrics = [
-    { label: 'Total Fleet Distance', value: '4,892 km', change: '+12.4%', icon: TrendingUp },
-    { label: 'Safety Compliance Rate', value: '98.6%', change: '+1.8%', icon: ShieldCheck },
-    { label: 'Alcohol Interlocks', value: '0 Violations', change: '100% Sober', icon: Activity },
-    { label: 'False Alarms Cancelled', value: '14 Events', change: 'Button A Filtered', icon: AlertOctagon },
-  ];
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [events, setEvents] = useState<SafetyEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const hourlyBAC = [
-    { hour: '08:00', bac: 0.000 },
-    { hour: '10:00', bac: 0.005 },
-    { hour: '12:00', bac: 0.012 },
-    { hour: '14:00', bac: 0.008 },
-    { hour: '16:00', bac: 0.015 },
-    { hour: '18:00', bac: 0.010 },
-    { hour: '20:00', bac: 0.000 },
+  const loadData = async () => {
+    setLoading(true);
+    const [d, e] = await Promise.all([fetchDevices(), fetchEvents(100)]);
+    setDevices(d);
+    setEvents(e);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const helmetsCount = devices.filter((d) => d.device_type === 'HELMET').length;
+  const ignitionsCount = devices.filter((d) => d.device_type === 'IGNITION').length;
+  const alcoholViolations = events.filter((e) => e.event_type === 'ALCOHOL_LOCKOUT' || e.event_type === 'ALCOHOL_VIOLATION').length;
+  const collisions = events.filter((e) => e.event_type === 'COLLISION').length;
+
+  const metrics = [
+    { label: 'Registered Helmets', value: `${helmetsCount} Units`, change: helmetsCount > 0 ? 'Active in Fleet' : 'Awaiting Units', icon: TrendingUp },
+    { label: 'Safety Compliance Rate', value: alcoholViolations === 0 ? '100%' : `${Math.max(0, 100 - alcoholViolations * 10)}%`, change: 'Sober Parameters', icon: ShieldCheck },
+    { label: 'Alcohol Lockouts', value: `${alcoholViolations} Violations`, change: alcoholViolations === 0 ? 'Zero Violations' : 'Interlock Engaged', icon: Activity },
+    { label: 'Collision Incidents', value: `${collisions} Events`, change: collisions === 0 ? 'Zero Crashes' : 'Emergency Dispatched', icon: AlertOctagon },
   ];
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-[#3c4a42]/40">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b theme-border">
         <div>
-          <span className="text-xs font-mono px-2 py-0.5 rounded bg-[#1c2028] text-[#4edea3] border border-[#3c4a42]">
+          <span className="text-xs font-mono px-2 py-0.5 rounded theme-bg-subtle text-[#10b981] dark:text-[#4edea3] border theme-border">
             TELEMETRY INTELLIGENCE
           </span>
-          <h1 className="text-2xl font-bold font-sans text-[#dfe2ee] tracking-tight mt-1">
+          <h1 className="text-2xl font-bold font-sans theme-text-main tracking-tight mt-1">
             Fleet Safety Analytics & Compliance
           </h1>
         </div>
+
+        <button
+          onClick={loadData}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg theme-bg-card hover:opacity-80 theme-text-sub border theme-border text-xs font-mono transition-all"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <span>Sync Analytics</span>
+        </button>
       </div>
 
       {/* Metrics Row */}
@@ -40,13 +60,13 @@ export default function AnalyticsPage() {
         {metrics.map((m, idx) => {
           const Icon = m.icon;
           return (
-            <div key={idx} className="p-5 rounded bg-[#181c24] border border-[#3c4a42]/50 space-y-2">
-              <div className="flex items-center justify-between text-xs font-mono text-[#86948a]">
+            <div key={idx} className="p-5 rounded-lg theme-bg-card border theme-border space-y-2 transition-colors">
+              <div className="flex items-center justify-between text-xs font-mono theme-text-muted">
                 <span>{m.label}</span>
-                <Icon className="w-4 h-4 text-[#4edea3]" />
+                <Icon className="w-4 h-4 text-[#10b981] dark:text-[#4edea3]" />
               </div>
-              <div className="text-2xl font-bold font-mono text-[#dfe2ee]">{m.value}</div>
-              <div className="text-[11px] font-mono text-[#4edea3]">{m.change}</div>
+              <div className="text-2xl font-bold font-mono theme-text-main">{m.value}</div>
+              <div className="text-[11px] font-mono text-[#10b981] dark:text-[#4edea3]">{m.change}</div>
             </div>
           );
         })}
@@ -54,72 +74,76 @@ export default function AnalyticsPage() {
 
       {/* Graphs Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Hourly BAC Profile Chart */}
-        <div className="p-5 rounded bg-[#181c24] border border-[#3c4a42]/50 space-y-4">
-          <div className="flex items-center justify-between text-xs font-mono text-[#86948a]">
-            <span>BREATHALYZER BAC DISTRIBUTION</span>
-            <span className="text-[#4edea3]">THRESHOLD: 0.050%</span>
+        {/* Compliance & Interlock Summary */}
+        <div className="p-5 rounded-lg theme-bg-card border theme-border space-y-4 transition-colors">
+          <div className="flex items-center justify-between text-xs font-mono theme-text-muted">
+            <span>INTERLOCK INTEGRITY STATUS</span>
+            <span className="text-[#10b981] dark:text-[#4edea3]">THRESHOLD: 0.050% BAC</span>
           </div>
 
-          <div className="h-64 flex items-end gap-6 pt-8 pb-4 px-2">
-            {hourlyBAC.map((item, idx) => (
-              <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-                <div className="text-[10px] font-mono text-[#86948a]">
-                  {item.bac.toFixed(3)}%
-                </div>
-                <div
-                  className="w-full bg-[#10b981] rounded-t transition-all hover:bg-[#4edea3]"
-                  style={{ height: `${Math.max(12, (item.bac / 0.03) * 100)}%` }}
-                />
-                <div className="text-[10px] font-mono text-[#bbcabf]">{item.hour}</div>
-              </div>
-            ))}
+          <div className="p-6 rounded-lg theme-bg-subtle border theme-border-subtle text-center space-y-2">
+            <div className="text-3xl font-black font-mono text-[#10b981] dark:text-[#4edea3]">
+              {ignitionsCount > 0 ? `${ignitionsCount} Paired Relays` : 'Ready For Hardware'}
+            </div>
+            <p className="text-xs font-mono theme-text-muted max-w-sm mx-auto">
+              Automated solid-state relays (SSR) prevent motorcycle engine starter engagement when alcohol exceeds legal limits or when the helmet is not worn.
+            </p>
           </div>
-          <p className="text-[11px] font-mono text-[#86948a] text-center">
-            All breath tests remained strictly within nominal sober parameters.
-          </p>
+
+          <div className="space-y-2 pt-2 text-xs font-mono">
+            <div className="flex justify-between theme-text-sub">
+              <span>Dual-Factor Pre-Ride Verification:</span>
+              <span className="text-[#10b981] dark:text-[#4edea3] font-bold">ENFORCED</span>
+            </div>
+            <div className="flex justify-between theme-text-sub">
+              <span>Anti-Stall Latched Protection:</span>
+              <span className="text-[#10b981] dark:text-[#4edea3] font-bold">ACTIVE</span>
+            </div>
+          </div>
         </div>
 
-        {/* Impact G Distribution */}
-        <div className="p-5 rounded bg-[#181c24] border border-[#3c4a42]/50 space-y-4">
-          <div className="flex items-center justify-between text-xs font-mono text-[#86948a]">
+        {/* 6-Axis IMU Crash Detection Status */}
+        <div className="p-5 rounded-lg theme-bg-card border theme-border space-y-4 transition-colors">
+          <div className="flex items-center justify-between text-xs font-mono theme-text-muted">
             <span>6-AXIS IMU ROAD VIBRATION & SHOCK</span>
-            <span className="text-[#adc6ff]">POTHOLE VS ACCIDENT</span>
+            <span className="text-blue-500 dark:text-[#adc6ff]">COLLISION DETECTION</span>
           </div>
 
           <div className="space-y-3 py-4 font-mono text-xs">
             <div className="space-y-1">
-              <div className="flex justify-between text-[#bbcabf]">
+              <div className="flex justify-between theme-text-sub">
                 <span>Normal Riding Vibrations (&lt; 1.5G)</span>
-                <span className="text-[#4edea3]">98.2%</span>
+                <span className="text-[#10b981] dark:text-[#4edea3]">Nominal</span>
               </div>
-              <div className="w-full bg-[#0a0e16] h-2 rounded-full overflow-hidden">
-                <div className="bg-[#4edea3] h-full w-[98.2%]" />
+              <div className="w-full theme-bg-input h-2 rounded-full overflow-hidden border theme-border-subtle">
+                <div className="bg-[#10b981] dark:bg-[#4edea3] h-full w-[100%]" />
               </div>
             </div>
 
             <div className="space-y-1">
-              <div className="flex justify-between text-[#bbcabf]">
+              <div className="flex justify-between theme-text-sub">
                 <span>Pothole & Speedbump Shock (1.5G - 3.5G)</span>
-                <span className="text-[#4cd7f6]">1.8%</span>
+                <span className="text-cyan-500">Filtered</span>
               </div>
-              <div className="w-full bg-[#0a0e16] h-2 rounded-full overflow-hidden">
-                <div className="bg-[#4cd7f6] h-full w-[1.8%]" />
+              <div className="w-full theme-bg-input h-2 rounded-full overflow-hidden border theme-border-subtle">
+                <div className="bg-cyan-500 h-full w-[0%]" />
               </div>
             </div>
 
             <div className="space-y-1">
-              <div className="flex justify-between text-[#bbcabf]">
+              <div className="flex justify-between theme-text-sub">
                 <span>Severe Impact Potential (&ge; 4.0G)</span>
-                <span className="text-[#ffb4ab]">0.0%</span>
+                <span className={collisions > 0 ? 'text-rose-500 font-bold' : 'theme-text-muted'}>
+                  {collisions > 0 ? `${collisions} Detected` : '0 Recorded'}
+                </span>
               </div>
-              <div className="w-full bg-[#0a0e16] h-2 rounded-full overflow-hidden">
-                <div className="bg-[#ffb4ab] h-full w-[0%]" />
+              <div className="w-full theme-bg-input h-2 rounded-full overflow-hidden border theme-border-subtle">
+                <div className="bg-rose-500 h-full w-[0%]" />
               </div>
             </div>
           </div>
-          <p className="text-[11px] font-mono text-[#86948a] text-center">
-            Zero fatal crashes logged in the past 30 operating days.
+          <p className="text-[11px] font-mono theme-text-muted text-center">
+            Multi-stage impact analysis filters out false alarms with a 20-second cancellable pre-alert window.
           </p>
         </div>
       </div>

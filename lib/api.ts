@@ -101,31 +101,8 @@ export async function fetchDevices(): Promise<Device[]> {
       name: d.label || d.name || d.serial_number,
     }));
   } catch (err) {
-    console.warn("Using fallback seeded devices", err);
-    return [
-      {
-        id: "hlm-1",
-        device_id: "HLM-2026-0001",
-        device_type: "HELMET",
-        name: "Alex Rider - Smart Helmet",
-        firmware_version: "1.0.0",
-        status: "ONLINE",
-        paired_device_id: "IGN-2026-0001",
-        last_seen_at: new Date().toISOString(),
-        is_active: true
-      },
-      {
-        id: "ign-1",
-        device_id: "IGN-2026-0001",
-        device_type: "IGNITION",
-        name: "Motorcycle Ignition Box",
-        firmware_version: "1.0.0",
-        status: "ONLINE",
-        paired_device_id: "HLM-2026-0001",
-        last_seen_at: new Date().toISOString(),
-        is_active: true
-      }
-    ];
+    console.warn("Could not fetch devices from API:", err);
+    return [];
   }
 }
 

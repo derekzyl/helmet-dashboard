@@ -24,12 +24,32 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark h-full">
-      <body className={`${inter.variable} ${jetbrainsMono.variable} min-h-full flex flex-col bg-[#0f131c] text-[#dfe2ee]`}>
+    <html lang="en" className="dark h-full" suppressHydrationWarning>
+      <head>
+        <meta name="color-scheme" content="light dark" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const stored = localStorage.getItem('helm-guard-theme');
+                const isDark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (isDark) {
+                  document.documentElement.classList.add('dark');
+                  document.documentElement.classList.remove('light');
+                } else {
+                  document.documentElement.classList.add('light');
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
+      </head>
+      <body className={`${inter.variable} ${jetbrainsMono.variable} min-h-full flex flex-col theme-bg-page theme-text-main antialiased`}>
         <Navbar />
         <div className="flex-1 flex overflow-hidden">
           <Sidebar />
-          <main className="flex-1 overflow-y-auto p-6 bg-[#0f131c]">
+          <main className="flex-1 overflow-y-auto p-6 theme-bg-page">
             {children}
           </main>
         </div>
