@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTelemetrySocket } from '@/lib/useTelemetrySocket';
-import { fetchLatestTelemetry, fetchEvents, TelemetryPoint, SafetyEvent } from '@/lib/api';
+import { fetchLatestTelemetry, fetchEvents, fetchDevices, TelemetryPoint, SafetyEvent } from '@/lib/api';
 import { 
   ShieldCheck, 
   ShieldAlert, 
@@ -18,18 +18,26 @@ import {
 } from 'lucide-react';
 
 export default function CockpitPage() {
-  const { telemetry: liveTelemetry, isConnected } = useTelemetrySocket('HLM-ESP32-001');
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('HLM-2026-0001');
+  const { telemetry: liveTelemetry, isConnected } = useTelemetrySocket(selectedDeviceId);
   const [telemetry, setTelemetry] = useState<TelemetryPoint | null>(null);
   const [recentEvents, setRecentEvents] = useState<SafetyEvent[]>([]);
 
   useEffect(() => {
-    // Initial fetch from backend
-    fetchLatestTelemetry('HLM-ESP32-001').then((res) => {
+    fetchDevices().then((devices) => {
+      const hlm = devices.find((d) => d.device_type === 'HELMET');
+      if (hlm && hlm.device_id) {
+        setSelectedDeviceId(hlm.device_id);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    fetchLatestTelemetry(selectedDeviceId).then((res) => {
       if (res) setTelemetry(res);
       else {
-        // Fallback default telemetry for initial view
         setTelemetry({
-          device_id: 'HLM-ESP32-001',
+          device_id: selectedDeviceId,
           helmet_worn: true,
           alcohol_detected: false,
           bac_level: 0.012,
@@ -47,7 +55,7 @@ export default function CockpitPage() {
     });
 
     fetchEvents(5).then(setRecentEvents);
-  }, []);
+  }, [selectedDeviceId]);
 
   // Update whenever live telemetry frame arrives from WebSocket
   useEffect(() => {
