@@ -2,12 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { fetchDevices, Device, API_BASE_URL } from '@/lib/api';
-import { Shield, Plus, Key, RefreshCw, Zap, Radio, Sliders } from 'lucide-react';
+import { Shield, Plus, Key, RefreshCw, Zap, Radio, Sliders, Sparkles, QrCode } from 'lucide-react';
+import EasyInstallModal from '@/components/EasyInstallModal';
 
 export default function DevicesPage() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+  const [showManualModal, setShowManualModal] = useState(false);
+
+  // Manual fallback state
   const [helmetSerial, setHelmetSerial] = useState('');
   const [ignitionSerial, setIgnitionSerial] = useState('');
   const [systemName, setSystemName] = useState('');
@@ -41,7 +45,7 @@ export default function DevicesPage() {
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleManualRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!helmetSerial) return;
 
@@ -64,7 +68,7 @@ export default function DevicesPage() {
 
       if (res.ok) {
         await loadDevices();
-        setIsModalOpen(false);
+        setShowManualModal(false);
         setHelmetSerial('');
         setIgnitionSerial('');
         setSystemName('');
@@ -91,14 +95,14 @@ export default function DevicesPage() {
             Smart Helmet & Ignition Systems
           </h1>
           <p className="text-xs font-mono theme-text-muted mt-1">
-            Each entry represents 1 unified system pairing an ESP32 Helmet with its Motorcycle Ignition Interlock
+            Zero-friction pairing • Helmet and Ignition Relay operate together as 1 protected device
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={loadDevices}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg theme-bg-card hover:opacity-80 theme-text-sub border theme-border text-xs font-mono transition-all"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg theme-bg-card hover:opacity-80 theme-text-sub border theme-border text-xs font-mono transition-all cursor-pointer"
             title="Refresh fleet list"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -106,34 +110,44 @@ export default function DevicesPage() {
           </button>
 
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => setIsInstallModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg theme-primary-bg font-bold text-xs font-mono transition-all shadow-sm cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
-            <span>Register 1 System Kit</span>
+            <Sparkles className="w-4 h-4 text-emerald-950 dark:text-emerald-950" />
+            <span>Install Helmet Kit</span>
           </button>
         </div>
       </div>
 
       {/* Hardware Device Grid or Empty State */}
       {devices.length === 0 ? (
-        <div className="p-12 rounded-xl theme-bg-card border theme-border text-center space-y-4">
-          <div className="w-12 h-12 mx-auto rounded-full theme-bg-subtle border theme-border flex items-center justify-center theme-text-muted">
-            <Shield className="w-6 h-6 text-[#10b981] dark:text-[#4edea3]" />
+        <div className="p-12 rounded-2xl theme-bg-card border theme-border text-center space-y-5">
+          <div className="w-16 h-16 mx-auto rounded-2xl theme-bg-subtle border theme-border flex items-center justify-center theme-text-muted shadow-sm">
+            <Shield className="w-8 h-8 text-[#10b981] dark:text-[#4edea3]" />
           </div>
-          <div>
-            <h3 className="text-base font-bold theme-text-main font-sans">No Smart Helmet Systems Registered</h3>
-            <p className="text-xs font-mono theme-text-muted max-w-md mx-auto mt-1">
-              Smart helmets and motorcycle ignition relays go together as 1 system. Register a paired system kit to begin monitoring safety telemetry.
+          <div className="space-y-1">
+            <h3 className="text-lg font-bold theme-text-main font-sans">No Smart Helmet Systems Installed</h3>
+            <p className="text-xs font-mono theme-text-muted max-w-md mx-auto">
+              Install your Smart Helmet and Motorcycle Ignition Relay in seconds using our zero-serial installation wizard.
             </p>
           </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg theme-primary-bg font-bold text-xs font-mono cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Register First System Kit</span>
-          </button>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => setIsInstallModalOpen(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl theme-primary-bg font-bold text-xs font-mono cursor-pointer shadow-md transition-transform hover:scale-[1.02]"
+            >
+              <Sparkles className="w-4 h-4 text-emerald-950 dark:text-emerald-950" />
+              <span>Launch 1-Tap Installation Wizard</span>
+            </button>
+
+            <button
+              onClick={() => setShowManualModal(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl theme-bg-subtle border theme-border text-xs font-mono theme-text-sub hover:theme-text-main cursor-pointer"
+            >
+              <span>Advanced Serial Setup</span>
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -206,28 +220,38 @@ export default function DevicesPage() {
         </div>
       )}
 
-      {/* 1-Device System Registration Modal */}
-      {isModalOpen && (
+      {/* ZERO-FRICTION INSTALLATION WIZARD MODAL */}
+      <EasyInstallModal
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
+        onSuccess={() => {
+          setIsInstallModalOpen(false);
+          loadDevices();
+        }}
+      />
+
+      {/* ADVANCED MANUAL SERIAL REGISTRATION MODAL (Optional Fallback) */}
+      {showManualModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg p-6 rounded-xl theme-bg-card border theme-border space-y-4 shadow-xl">
             <div className="flex items-center justify-between pb-3 border-b theme-border">
               <div>
                 <h2 className="text-lg font-bold font-sans theme-text-main">
-                  Register Smart Helmet & Ignition System
+                  Advanced: Manual Serial Numbers
                 </h2>
                 <p className="text-xs font-mono theme-text-muted mt-0.5">
-                  Registers the helmet and ignition interlock together as 1 device
+                  Factory override for manual serial specification
                 </p>
               </div>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => setShowManualModal(false)}
                 className="theme-text-muted hover:theme-text-main font-mono text-lg cursor-pointer"
               >
                 &times;
               </button>
             </div>
 
-            <form onSubmit={handleRegister} className="space-y-4 text-xs font-mono">
+            <form onSubmit={handleManualRegister} className="space-y-4 text-xs font-mono">
               <div>
                 <label className="block theme-text-muted mb-1 font-semibold">SYSTEM / MOTORCYCLE LABEL</label>
                 <input
@@ -292,17 +316,10 @@ export default function DevicesPage() {
                 </div>
               </div>
 
-              <div className="p-3 rounded-lg theme-bg-subtle border theme-border text-[11px] theme-text-sub space-y-1">
-                <span className="font-bold text-[#10b981] dark:text-[#4edea3] block">Automatic Cryptographic Binding</span>
-                <p>
-                  Upon registration, a unique 256-bit PSK is generated to bind the helmet and ignition over local WPA2 / SoftAP with replay-protected HMAC-SHA256 heartbeats.
-                </p>
-              </div>
-
               <div className="pt-2 flex gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => setShowManualModal(false)}
                   className="flex-1 py-2.5 rounded-lg theme-bg-subtle hover:opacity-80 theme-text-sub border theme-border cursor-pointer"
                 >
                   Cancel
@@ -312,7 +329,7 @@ export default function DevicesPage() {
                   disabled={isSubmitting}
                   className="flex-1 py-2.5 rounded-lg theme-primary-bg font-bold disabled:opacity-50 cursor-pointer"
                 >
-                  {isSubmitting ? 'Registering System...' : 'Register as 1 Device'}
+                  {isSubmitting ? 'Registering...' : 'Register Device'}
                 </button>
               </div>
             </form>

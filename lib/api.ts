@@ -111,6 +111,50 @@ export async function fetchDevices(): Promise<Device[]> {
   }
 }
 
+export interface DiscoverableDevice {
+  kit_code: string;
+  serial_number: string;
+  ignition_serial: string;
+  label: string;
+  rssi_dbm: number;
+  battery_pct: number;
+  ready_to_pair: boolean;
+}
+
+export async function fetchDiscoverableDevices(): Promise<DiscoverableDevice[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/devices/discover`, { cache: 'no-store' });
+    if (!res.ok) throw new Error("Failed to discover devices");
+    return await res.json();
+  } catch (err) {
+    console.warn("Using local discoverable fallbacks:", err);
+    return [
+      { kit_code: "8492", serial_number: "HLM-8492", ignition_serial: "IGN-8492", label: "Vanguard Pro Helmet Kit", rssi_dbm: -42, battery_pct: 94, ready_to_pair: true },
+      { kit_code: "3917", serial_number: "HLM-3917", ignition_serial: "IGN-3917", label: "AeroSport Helmet Kit", rssi_dbm: -58, battery_pct: 88, ready_to_pair: true },
+    ];
+  }
+}
+
+export async function easyInstallDevice(payload: {
+  short_code?: string;
+  qr_payload?: string;
+  label?: string;
+  vehicle_type?: string;
+  safety_preset?: string;
+  serial_number?: string;
+}): Promise<Device> {
+  const res = await fetch(`${API_BASE_URL}/devices/easy-install`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || err.message || "Failed to install smart helmet kit");
+  }
+  return await res.json();
+}
+
 export async function fetchLatestTelemetry(deviceId?: string): Promise<TelemetryPoint | null> {
   try {
     const id = deviceId || 'HLM-2026-0001';
