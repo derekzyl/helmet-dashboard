@@ -8,11 +8,14 @@ export interface Device {
   id: string;
   device_id: string;
   serial_number?: string;
-  device_type: "HELMET" | "IGNITION";
+  device_type: string;
   name: string;
   label?: string;
+  helmet_serial?: string;
+  ignition_serial?: string;
+  paired_serial_number?: string;
   firmware_version: string;
-  status: "ONLINE" | "OFFLINE" | "ALERT";
+  status: "ONLINE" | "OFFLINE" | "ALERT" | "ARMED" | "UNPAIRED" | string;
   paired_device_id?: string;
   last_seen_at?: string;
   last_battery_pct?: number;
@@ -98,7 +101,9 @@ export async function fetchDevices(): Promise<Device[]> {
     return list.map((d: any) => ({
       ...d,
       device_id: d.serial_number || d.device_id || d.id,
-      name: d.label || d.name || d.serial_number,
+      name: d.label || d.name || `Smart Helmet System (${d.serial_number})`,
+      helmet_serial: d.serial_number,
+      ignition_serial: d.ignition_serial || d.paired_serial_number || (d.paired_device_id ? `IGN-${(d.serial_number || '').replace(/^HLM-?/, '')}` : undefined),
     }));
   } catch (err) {
     console.warn("Could not fetch devices from API:", err);
